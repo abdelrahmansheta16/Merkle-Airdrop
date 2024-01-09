@@ -4,7 +4,8 @@ const mongoose = require('mongoose');
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 const { MerkleTree } = require('merkletreejs');
-const SHA256 = require('crypto-js/sha256')
+const { ethers } = require('ethers');
+const keccak256 = require('keccak256');
 var cors = require('cors');
 
 const app = express();
@@ -13,8 +14,8 @@ app.use(cors())
 const PORT = process.env.PORT || 5000;
 
 let whitelistAddresses = [
-    "0X5B38DA6A701C568545DCFCB03FCB875F56BEDDC4",
-    "0X5A641E5FB72A2FD9137312E7694D42996D689D99"
+    '0X5B38DA6A701C568545DCFCB03FCB875F56BEDDC4'.toLowerCase(),
+    '0X5A641E5FB72A2FD9137312E7694D42996D689D99'.toLowerCase()
 ];
 // The leaves, merkleTree, and rootHas are all PRE-DETERMINED prior to whitelist claim
 let leafNodes;
@@ -66,14 +67,14 @@ app.get('/proof/:walletAddress', async (req, res) => {
     try {
         const { walletAddress } = req.params;
         console.log(walletAddress);
-        whitelistAddresses.push(walletAddress);
+        whitelistAddresses.push(walletAddress.toLowerCase());
         console.log(whitelistAddresses);
-        const leafNodes = whitelistAddresses.map(addr => SHA256(addr));
-        const merkleTree = new MerkleTree(leafNodes, SHA256, { sortPairs: true });
-        const rootHash = merkleTree.getRoot();
+        const leafNodes = whitelistAddresses.map(addr => Buffer.from(ethers.utils.solidityKeccak256(["address"], [addr]).slice(2), "hex"));
+        const merkleTree = new MerkleTree(leafNodes, keccak256, { sortPairs: true });
+        const rootHash = merkleTree.getHexRoot();
         console.log('Whitelist Merkle Tree\n', merkleTree.toString());
         console.log("Root Hash: ", rootHash);
-        const claimingAddress = SHA256(walletAddress);
+        const claimingAddress = Buffer.from(ethers.utils.solidityKeccak256(["address"], [whitelistAddresses[2].toLowerCase()]).slice(2), "hex");
         const hexProof = merkleTree.getHexProof(claimingAddress);
         console.log("hexProof: ", hexProof);
         console.log(merkleTree.verify(hexProof, claimingAddress, rootHash));
