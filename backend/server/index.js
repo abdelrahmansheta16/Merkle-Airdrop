@@ -30,10 +30,23 @@ const io = new Server(server, {
 });
 
 const maxUsers = process.env.MAX_USERS;
+const mongodbUrl = process.env.MONGODB_URL;
+const telegramToken = process.env.TELEGRAM_TOKEN;
+
+// Connect to Ethereum using Infura or any other Ethereum provider
+const provider = new ethers.providers.JsonRpcProvider(process.env.ALCHEMY_URL);
+
+// Your wallet's private key
+const privateKey = process.env.PRIVATE_KEY;
+
+// Connect to the Ethereum network with your wallet
+const wallet = new ethers.Wallet(privateKey, provider);
+
+const contract = new ethers.Contract(process.env.CONTRACT_ADDRESS, AirdropMerkle.abi, wallet);
 
 
 // Connect to MongoDB
-mongoose.connect('mongodb+srv://abdelrahmansheta16:bZE5hq8aOYcLGcrI@cluster0.kvyq7im.mongodb.net/', {
+mongoose.connect(mongodbUrl, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
 });
@@ -114,7 +127,7 @@ app.get('/proof/:walletAddress', async (req, res) => {
         console.log(merkleTree.verify(hexProof, claimingAddress, rootHash));
 
         if (hexProof) {
-            res.status(200).json({ hexProof });
+            res.status(200).json({ hexProof,claimingAddress });
         } else {
             res.status(404).json({ error: 'User not found' });
         }
@@ -144,18 +157,8 @@ app.post('/register', async (req, res) => {
         // Emit a custom event indicating a new user has been added along with user count
         console.log('Adding new user');
         const userCount = await User.countDocuments();
-        if (userCount > maxUsers) {
-            // Connect to Ethereum using Infura or any other Ethereum provider
-            const provider = new ethers.providers.JsonRpcProvider(process.env.ALCHEMY_URL);
+        if (userCount == maxUsers) {
 
-            // Your wallet's private key
-            const privateKey = process.env.PRIVATE_KEY;
-
-            // Connect to the Ethereum network with your wallet
-            const wallet = new ethers.Wallet(privateKey, provider);
-
-            const contract = new ethers.Contract(process.env.CONTRACT_ADDRESS,AirdropMerkle.abi,wallet);
-            
             const walletAddressesArray = await User.find({}, 'walletAddress -_id');
 
             // Update the whitelistAddresses array
@@ -182,11 +185,8 @@ app.post('/register', async (req, res) => {
     }
 });
 
-// Your Telegram bot token
-const token = '6342356196:AAGn2jvDu4fkE8JR2ejtHiOxOlqgEVVl0ig';
-
 // Create a bot that uses 'polling' to fetch new updates
-const bot = new TelegramBot(token, { polling: true });
+const bot = new TelegramBot(telegramToken, { polling: true });
 
 const registrationSteps = {
     INIT: 'init',
@@ -198,13 +198,16 @@ const registrationSteps = {
 const registrationProgress = new Map();
 
 // Register command handler
-bot.onText(/\/request/, (msg) => {
+bot.onText(/\/request/, async (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
-    const userCount = User.countDocuments();
+    const userCount = await User.countDocuments();
+    console.log(userCount);
     // Check if the user is already in the registration process
     const currentStep = registrationProgress.get(userId);
     if (userCount > maxUsers) {
+        console.log(userCount);
+        console.log(maxUsers);
         bot.sendMessage(chatId, 'Airdrop registration is closed');
     } else {
         if (!currentStep || currentStep === registrationSteps.INIT) {
@@ -226,6 +229,8 @@ bot.on('message', async (msg) => {
     const userCount = await User.countDocuments();
 
     console.log(message);
+    console.log(userCount);
+    console.log(maxUsers);
 
     // Check the user's current registration step
     const currentStep = registrationProgress.get(userId);
@@ -280,6 +285,7 @@ bot.on('message', async (msg) => {
     else {
         if (message != "/request") {
             if (userCount > maxUsers) {
+                console.log('hello')
                 bot.sendMessage(chatId, 'Airdrop registration is closed');
             } else {
                 // User is not in any registration process

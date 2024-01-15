@@ -55,7 +55,7 @@ const AirdropRegistration = () => {
         Hi {user.firstName}, You're already registered
       </div> : userCount > maxUsers ? <div>Registration Closed</div> : <div className="container mx-auto mt-10">
         <h1 className="text-3xl font-semibold mb-6">Airdrop Registration</h1>
-        {userCount && <h1 className="text-2xl mb-6">User Count: {userCount}</h1>}
+        <h1 className="text-2xl mb-6">User Count: {userCount}</h1>
         <button
           onClick={handleRegistration}
           className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700"
