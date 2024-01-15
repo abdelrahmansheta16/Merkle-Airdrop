@@ -33,20 +33,20 @@ contract AirdropMerkle is Ownable {
     }
 
     // Function to claim tokens using merkle proof
-    function claim(bytes32[] calldata proof, uint256 amount) external {
+    function claim(bytes32[] calldata proof,bytes32 leaf) external {
         require(!claimed[msg.sender], "Already claimed");
+        require(leaf == keccak256(abi.encodePacked(msg.sender)), "Only token claimer can call this function");
 
         // Verify the merkle proof
-        bytes32 leaf = keccak256(abi.encodePacked(msg.sender));
         require(MerkleProof.verify(proof, merkleRoot, leaf), "Invalid proof");
 
         // Mark the user as claimed
         claimed[msg.sender] = true;
 
         // Transfer tokens to the user
-        token.transfer(msg.sender, amount);
+        token.transfer(msg.sender, 1*10**18);
 
         // Emit the claim event
-        emit Claim(msg.sender, amount);
+        emit Claim(msg.sender, 1*10**18);
     }
 }

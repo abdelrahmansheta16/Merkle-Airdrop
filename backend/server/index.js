@@ -3,29 +3,34 @@ const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
+const AirdropMerkle = require('../artifacts/contracts/MerkleAirdrop.sol/AirdropMerkle.json');
+const AirdropToken = require('../artifacts/contracts/AirdropToken.sol/AirdropToken.json');
 const { MerkleTree } = require('merkletreejs');
-const { ethers } = require('ethers');
+const { Server } = require('socket.io');
+const { createServer } = require('node:http');
+const ethers = require('ethers');
 const keccak256 = require('keccak256');
 var cors = require('cors');
+require('dotenv').config()
+
 
 const app = express();
 app.use(cors())
 
 const PORT = process.env.PORT || 5000;
 
-let whitelistAddresses = [
-    '0X5B38DA6A701C568545DCFCB03FCB875F56BEDDC4'.toLowerCase(),
-    '0X5A641E5FB72A2FD9137312E7694D42996D689D99'.toLowerCase()
-];
-// The leaves, merkleTree, and rootHas are all PRE-DETERMINED prior to whitelist claim
-let leafNodes;
-let merkleTree;
-
-// 4. Get root hash of the `merkleeTree` in hexadecimal format (0x)
-// Print out the Entire Merkle Tree.
-let rootHash;
-
 app.use(bodyParser.json());
+
+const server = createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: "http://localhost:3000",
+        methods: ["GET", "POST"]
+    }
+});
+
+const maxUsers = process.env.MAX_USERS;
+
 
 // Connect to MongoDB
 mongoose.connect('mongodb+srv://abdelrahmansheta16:bZE5hq8aOYcLGcrI@cluster0.kvyq7im.mongodb.net/', {
@@ -42,6 +47,29 @@ const userSchema = new mongoose.Schema({
 });
 
 const User = mongoose.model('User', userSchema);
+
+// Handle endpoint to get user by wallet address
+app.get('/userCount', async (req, res) => {
+    try {
+        const userCount = await User.countDocuments();
+        res.status(200).json({ userCount });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+// Handle endpoint to get user by wallet address
+app.get('/user/:account', async (req, res) => {
+    try {
+        const { account } = req.params;
+        const user = await User.findOne({ walletAddress: account });
+        res.status(200).json({ user });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
 
 // Handle endpoint to get user by wallet address
 app.get('/user/:walletAddress', async (req, res) => {
@@ -67,15 +95,21 @@ app.get('/proof/:walletAddress', async (req, res) => {
     try {
         const { walletAddress } = req.params;
         console.log(walletAddress);
-        whitelistAddresses.push(walletAddress.toLowerCase());
-        console.log(whitelistAddresses);
-        const leafNodes = whitelistAddresses.map(addr => Buffer.from(ethers.utils.solidityKeccak256(["address"], [addr]).slice(2), "hex"));
+
+        // Extract wallet addresses from the list of users
+        const walletAddressesArray = await User.find({}, 'walletAddress -_id');
+
+        // Update the whitelistAddresses array
+        const whitelistAddresses = walletAddressesArray.map(item => item.walletAddress.toLowerCase());
+        const leafNodes = whitelistAddresses.map(addr => keccak256(addr));
         const merkleTree = new MerkleTree(leafNodes, keccak256, { sortPairs: true });
-        const rootHash = merkleTree.getHexRoot();
+        const buf2hex = x => '0x' + x.toString('hex');
+        const rootHash = buf2hex(merkleTree.getRoot());
         console.log('Whitelist Merkle Tree\n', merkleTree.toString());
         console.log("Root Hash: ", rootHash);
-        const claimingAddress = Buffer.from(ethers.utils.solidityKeccak256(["address"], [whitelistAddresses[2].toLowerCase()]).slice(2), "hex");
-        const hexProof = merkleTree.getHexProof(claimingAddress);
+        const claimingAddress = buf2hex(keccak256(walletAddress))
+        console.log(claimingAddress)
+        const hexProof = merkleTree.getProof(keccak256(walletAddress)).map(x => buf2hex(x.data));
         console.log("hexProof: ", hexProof);
         console.log(merkleTree.verify(hexProof, claimingAddress, rootHash));
 
@@ -107,12 +141,47 @@ app.post('/register', async (req, res) => {
 
         await user.save();
 
+        // Emit a custom event indicating a new user has been added along with user count
+        console.log('Adding new user');
+        const userCount = await User.countDocuments();
+        if (userCount > maxUsers) {
+            // Connect to Ethereum using Infura or any other Ethereum provider
+            const provider = new ethers.providers.JsonRpcProvider(process.env.ALCHEMY_URL);
+
+            // Your wallet's private key
+            const privateKey = process.env.PRIVATE_KEY;
+
+            // Connect to the Ethereum network with your wallet
+            const wallet = new ethers.Wallet(privateKey, provider);
+
+            const contract = new ethers.Contract(process.env.CONTRACT_ADDRESS,AirdropMerkle.abi,wallet);
+            
+            const walletAddressesArray = await User.find({}, 'walletAddress -_id');
+
+            // Update the whitelistAddresses array
+            const whitelistAddresses = walletAddressesArray.map(item => item.walletAddress.toLowerCase());
+            const leafNodes = whitelistAddresses.map(addr => keccak256(addr));
+            const merkleTree = new MerkleTree(leafNodes, keccak256, { sortPairs: true });
+            const buf2hex = x => '0x' + x.toString('hex');
+            const rootHash = buf2hex(merkleTree.getRoot());
+            console.log('Whitelist Merkle Tree\n', merkleTree.toString());
+            console.log("Root Hash: ", rootHash);
+
+            let _tx = await contract.connect(wallet).updateMerkleRoot(rootHash);
+            console.log("tx hash: ", _tx?.hash);
+            let _receipt = await _tx.wait();
+            console.log("tx receipt: ", _receipt);
+        }
+        // Emit the user count to all connected clients
+        io.emit('userCountUpdate', { userCount });
+
         res.status(200).json({ message: 'Registration successful!' });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
+
 // Your Telegram bot token
 const token = '6342356196:AAGn2jvDu4fkE8JR2ejtHiOxOlqgEVVl0ig';
 
@@ -132,10 +201,10 @@ const registrationProgress = new Map();
 bot.onText(/\/request/, (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
-
+    const userCount = User.countDocuments();
     // Check if the user is already in the registration process
     const currentStep = registrationProgress.get(userId);
-    if (whitelistAddresses.length > 2) {
+    if (userCount > maxUsers) {
         bot.sendMessage(chatId, 'Airdrop registration is closed');
     } else {
         if (!currentStep || currentStep === registrationSteps.INIT) {
@@ -154,14 +223,18 @@ bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
     const message = msg.text;
+    const userCount = await User.countDocuments();
+
     console.log(message);
 
     // Check the user's current registration step
     const currentStep = registrationProgress.get(userId);
 
     if (message && currentStep === registrationSteps.REQUEST_WALLET && message.length == 42) {
-        const walletAddress = message;
-        if (whitelistAddresses.includes(message)) {
+        // Check if a user with the same walletAddress already exists
+        const existingUser = await User.findOne({ message });
+
+        if (existingUser) {
             bot.sendMessage(chatId, 'Wallet Address already registered');
         } else {
             // Send an invitation link to the user to join the group
@@ -183,11 +256,8 @@ bot.on('message', async (msg) => {
                     telegramUsername: msg.from.username,
                     firstName: msg.from.first_name,
                     lastName: msg.from.last_name,
-                    walletAddress: msg.text,
+                    walletAddress,
                 };
-
-                console.log(walletAddress);
-                whitelistAddresses.push(walletAddress);
                 // Send registration data to your Node.js server
                 try {
                     const response = await axios.post('http://localhost:5000/register', registrationData);
@@ -209,7 +279,7 @@ bot.on('message', async (msg) => {
     }
     else {
         if (message != "/request") {
-            if (whitelistAddresses.length > 2) {
+            if (userCount > maxUsers) {
                 bot.sendMessage(chatId, 'Airdrop registration is closed');
             } else {
                 // User is not in any registration process
@@ -220,6 +290,16 @@ bot.on('message', async (msg) => {
 });
 
 
-app.listen(PORT, () => {
+io.on('connection', (socket) => {
+    console.log('a user connected');
+    socket.on('disconnect', () => {
+        console.log('user disconnected');
+    });
+});
+
+
+
+// Start the server
+server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });

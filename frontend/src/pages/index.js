@@ -1,10 +1,10 @@
 'use client'
-import InstructionsComponent from "../../components/instructionsComponent";
+import AirdropRegistration from "../../components/instructionsComponent";
 
 export default function Home() {
   return (
     <main className="p-2">
-      <InstructionsComponent></InstructionsComponent>
+      <AirdropRegistration></AirdropRegistration>
     </main>
   );
 }
