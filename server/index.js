@@ -126,7 +126,7 @@ app.get('/proof/:walletAddress', async (req, res) => {
         console.log(merkleTree.verify(hexProof, claimingAddress, rootHash));
 
         if (hexProof) {
-            res.status(200).json({ hexProof,claimingAddress });
+            res.status(200).json({ hexProof, claimingAddress });
         } else {
             res.status(404).json({ error: 'User not found' });
         }

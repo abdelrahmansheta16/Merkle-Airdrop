@@ -13,6 +13,7 @@ const AirdropRegistration = () => {
   const [user, setUser] = useState({});
   const { address: account, isConnected } = useAccount();
   const maxUsers = process.env.NEXT_PUBLIC_MAX_USERS;
+  const telegramURL = process.env.NEXT_PUBLIC_TELEGRAM_URL;
 
 
   useEffect(() => {
@@ -43,7 +44,7 @@ const AirdropRegistration = () => {
   const handleRegistration = () => {
     // Check the condition to stop adding new users
     if (userCount < maxUsers) {
-      window.open('https://t.me/abdelrahman050_bot', '_blank');
+      window.open(telegramURL, '_blank');
     } else {
       alert('Registration limit reached. Cannot add more users.');
     }
