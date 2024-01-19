@@ -1,4 +1,4 @@
-# Web3 Airdrop Project
+# Merkle Airdrop Project
 
 ## Overview
 
