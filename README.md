@@ -12,7 +12,7 @@ Users can easily register for airdrops through a Telegram BOT. The registration 
 
 ### 2. Airdrop Claim Process
 
-After closing the airdrop registration phase, users can proceed to claim their tokens on the dedicated airdrop page. The server calculates and returns a Merkle Proof based on users' addresses. Users then sign the transaction, calling a smart contract to initiate the token claim process. If users have successfully registered before, they will receive the allocated tokens upon completing the transaction.
+After closing the airdrop registration phase, users can proceed to claim their tokens on the dedicated airdrop page '/claim'. The server calculates and returns a Merkle Proof based on users' addresses. Users then sign the transaction, calling a smart contract to initiate the token claim process. If users have successfully registered before, they will receive the allocated tokens upon completing the transaction.
 
 ## Getting Started
 
