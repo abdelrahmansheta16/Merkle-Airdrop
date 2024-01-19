@@ -94,6 +94,7 @@ Before running the project, ensure you have the following set up:
     NEXT_PUBLIC_CONTRACT_ADDRESS=<MerkleAirdrop_smart_contract_address_that_you_have_deployed>
     NEXT_PUBLIC_ALCHEMY_URL=<alchemy_rpc_node_url_for_sepolia_network>
     NEXT_PUBLIC_PRIVATE_KEY=<your_metamask_private_key>
+    NEXT_PUBLIC_TELEGRAM_URL=<telegram_bot_url>
     ```
 
 3. **Run npm install:**
