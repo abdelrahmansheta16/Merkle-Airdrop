@@ -8,7 +8,7 @@ Welcome to our Web3 Airdrop Project! This repository houses the codebase for a d
 
 ### 1. Airdrop Registration via Telegram BOT
 
-Users can easily register for airdrops through a Telegram BOT. The registration process involves joining the Telegram chat box, following Twitter, or retweeting as specified conditions. Once the user completes the registration steps, the Telegram BOT communicates with the Node.js server to save the user's information to a MongoDB database.
+Users can easily register for airdrops through a Telegram BOT. The registration process involves joining the Telegram chat box. Once the user completes the registration steps, the Telegram BOT communicates with the Node.js server to save the user's information to a MongoDB database.
 
 ### 2. Airdrop Claim Process
 
