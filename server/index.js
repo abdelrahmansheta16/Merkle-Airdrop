@@ -263,7 +263,7 @@ bot.on('message', async (msg) => {
                     };
                     // Send registration data to your Node.js server
                     try {
-                        const response = await axios.post('http://localhost:5000/register', registrationData);
+                        const response = await axios.post(`http://localhost:${PORT}/register`, registrationData);
                         bot.sendMessage(chatId, response.data.message);
                         // Update the registration progress
                         registrationProgress.set(userId, registrationSteps.ADDED);

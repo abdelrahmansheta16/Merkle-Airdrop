@@ -14,18 +14,19 @@ const AirdropRegistration = () => {
   const { address: account, isConnected } = useAccount();
   const maxUsers = process.env.NEXT_PUBLIC_MAX_USERS;
   const telegramURL = process.env.NEXT_PUBLIC_TELEGRAM_URL;
+  const serverURL = process.env.NEXT_PUBLIC_SERVER_URL;
 
 
   useEffect(() => {
     const initFunction = async () => {
-      const userCount = await axios.get(`http://localhost:5000/userCount/`);
-      const user = await axios.get(`http://localhost:5000/user/${account}`);
+      const userCount = await axios.get(`${serverURL}/userCount/`);
+      const user = await axios.get(`${serverURL}/user/${account}`);
       setUser(user.data.user);
       console.log(user);
       setUserCount(userCount.data.userCount);
 
       // Connect to the server using WebSocket
-      const socket = io('http://localhost:5000');
+      const socket = io(serverURL);
 
       // Listen for updates on the number of users
       socket.on('userCountUpdate', (data) => {
