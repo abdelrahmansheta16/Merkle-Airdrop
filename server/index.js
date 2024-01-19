@@ -191,6 +191,7 @@ const registrationSteps = {
     INIT: 'init',
     REQUEST_WALLET: 'request_wallet',
     JOIN_CHAT: 'join_chat',
+    ADDED: 'added'
 };
 
 // Map to store user registration progress
@@ -233,62 +234,64 @@ bot.on('message', async (msg) => {
 
     // Check the user's current registration step
     const currentStep = registrationProgress.get(userId);
+    if (message) {
+        if (currentStep === registrationSteps.REQUEST_WALLET && message.length == 42) {
+            // Check if a user with the same walletAddress already exists
+            const existingUser = await User.findOne({ message });
 
-    if (message && currentStep === registrationSteps.REQUEST_WALLET && message.length == 42) {
-        // Check if a user with the same walletAddress already exists
-        const existingUser = await User.findOne({ message });
-
-        if (existingUser) {
-            bot.sendMessage(chatId, 'Wallet Address already registered');
-        } else {
-            // Send an invitation link to the user to join the group
-            bot.sendMessage(chatId, 'Click the following link to join the group: https://t.me/+prVaQ9BzNewyMjQ8');
-            // Handle new chat members
-            bot.on('new_chat_members', async (msg) => {
-                // Check if the user has completed the registration process
-                const currentStep = registrationProgress.get(userId);
-
-                if (currentStep === registrationSteps.JOIN_CHAT) {
-                    bot.sendMessage(chatId, 'Welcome to the group!');
-                }
-
-                const walletAddress = message;
-                console.log("hel: ", walletAddress);
-                // Continue with the registration process
-                const registrationData = {
-                    userId,
-                    telegramUsername: msg.from.username,
-                    firstName: msg.from.first_name,
-                    lastName: msg.from.last_name,
-                    walletAddress,
-                };
-                // Send registration data to your Node.js server
-                try {
-                    const response = await axios.post('http://localhost:5000/register', registrationData);
-                    bot.sendMessage(chatId, response.data.message);
-                    // Update the registration progress
-                    registrationProgress.set(userId, registrationSteps.JOIN_CHAT);
-                } catch (error) {
-                    console.error('Error during registration:', error.message);
-                    bot.sendMessage(chatId, 'Error during registration. Please try again.');
-                }
-            });
-        }
-    } else if (currentStep === registrationSteps.JOIN_CHAT) {
-        // User is already registered and joined the chat
-        bot.sendMessage(chatId, 'You are already registered and have joined the chat.');
-    } else if (currentStep === registrationSteps.REQUEST_WALLET) {
-        // User is already registered and joined the chat
-        bot.sendMessage(chatId, 'You are already in the registration process. Please provide your wallet address.');
-    }
-    else {
-        if (message != "/request") {
-            if (userCount > maxUsers) {
-                console.log('hello')
-                bot.sendMessage(chatId, 'Airdrop registration is closed');
+            if (existingUser) {
+                bot.sendMessage(chatId, 'Wallet Address already registered');
             } else {
-                // User is not in any registration process
-                bot.sendMessage(chatId, 'You have not started the registration process. Use /request to start.');
+                // Send an invitation link to the user to join the group
+                bot.sendMessage(chatId, 'Click the following link to join the group: https://t.me/+prVaQ9BzNewyMjQ8');
+                // Handle new chat members
+                bot.on('new_chat_members', async (msg) => {
+                    // Check if the user has completed the registration process
+                    const currentStep = registrationProgress.get(userId);
+                    registrationProgress.set(userId, registrationSteps.JOIN_CHAT);
+                    bot.sendMessage(chatId, 'Welcome to the group!');
+
+                    const walletAddress = message;
+                    console.log("hel: ", walletAddress);
+                    // Continue with the registration process
+                    const registrationData = {
+                        userId,
+                        telegramUsername: msg.from.username,
+                        firstName: msg.from.first_name,
+                        lastName: msg.from.last_name,
+                        walletAddress,
+                    };
+                    // Send registration data to your Node.js server
+                    try {
+                        const response = await axios.post('http://localhost:5000/register', registrationData);
+                        bot.sendMessage(chatId, response.data.message);
+                        // Update the registration progress
+                        registrationProgress.set(userId, registrationSteps.ADDED);
+                    } catch (error) {
+                        console.error('Error during registration:', error.message);
+                        bot.sendMessage(chatId, 'Error during registration. Please try again.');
+                    }
+                });
+            }
+        } else if (currentStep === registrationSteps.ADDED) {
+            // User is already registered and joined the chat
+            bot.sendMessage(chatId, 'You are already registered and have joined the chat.');
+        } else if (currentStep === registrationSteps.JOIN_CHAT) {
+            // User is already registered but didn't join the chat
+            bot.sendMessage(chatId, 'Please join the group');
+        } else if (currentStep === registrationSteps.REQUEST_WALLET) {
+            // User is already registered and joined the chat
+            bot.sendMessage(chatId, 'You are already in the registration process. Please provide your wallet address.');
+        }
+        else {
+            if (message != "/request") {
+                if (userCount > maxUsers) {
+                    console.log('hello')
+                    bot.sendMessage(chatId, 'Airdrop registration is closed');
+                } else {
+                    // User is not in any registration process
+                    bot.sendMessage(chatId, 'You have not started the registration process. Use /request to start.');
+                }
             }
         }
     }
