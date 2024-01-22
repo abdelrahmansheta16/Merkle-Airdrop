@@ -17,20 +17,20 @@ const app = express();
 app.use(cors())
 
 const PORT = process.env.PORT || 5000;
+const maxUsers = process.env.MAX_USERS;
+const mongodbUrl = process.env.MONGODB_URL;
+const telegramToken = process.env.TELEGRAM_TOKEN;
+const frontendUrl = process.env.FRONTEDN_URL;
 
 app.use(bodyParser.json());
 
 const server = createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: "http://localhost:3000",
+        origin: frontendUrl,
         methods: ["GET", "POST"]
     }
 });
-
-const maxUsers = process.env.MAX_USERS;
-const mongodbUrl = process.env.MONGODB_URL;
-const telegramToken = process.env.TELEGRAM_TOKEN;
 
 // Connect to Ethereum using Infura or any other Ethereum provider
 const provider = new ethers.providers.JsonRpcProvider(process.env.ALCHEMY_URL);

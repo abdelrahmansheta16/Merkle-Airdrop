@@ -1,6 +1,7 @@
 // AirdropRegistration.js
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import axios from 'axios';
 import io from 'socket.io-client';
 import { useAccount } from 'wagmi';
@@ -53,7 +54,14 @@ const AirdropRegistration = () => {
   return (
     <>
       {user ? <div>
-        Hi {user.firstName}, You're already registered
+        <p>Hi {user.firstName}, You're already registered</p>
+        <Link href="/claim">
+          <button
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            Claim
+          </button>
+        </Link>
       </div> : userCount > maxUsers ? <div>Registration Closed</div> : <div className="container mx-auto mt-10">
         <h1 className="text-3xl font-semibold mb-6">Airdrop Registration</h1>
         <h1 className="text-2xl mb-6">User Count: {userCount}</h1>
